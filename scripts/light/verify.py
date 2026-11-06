@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import uuid
 
 root = Path(__file__).resolve().parents[2]
 release = root / 'apps/desktop/release'
@@ -23,6 +24,16 @@ def verified_signature(bundle: Path) -> dict[str, str]:
     assert fields['Identifier'] == 'com.mickroplastics.hermes-light', fields
     assert fields['Signature'] == 'adhoc', fields
     assert 'runtime' in fields['CodeDirectory v'], fields
+    records = json.loads((bundle / 'Contents/Resources/light-executable-uuids.json').read_text())
+    assert len(records) >= 2, 'Main and helper identities must be isolated'
+    assert len({r['uuid'] for r in records}) == len(records)
+    for record in records:
+        expected = uuid.uuid5(uuid.NAMESPACE_URL, f"{record['bundleId']}/{record['electronUuid']}")
+        assert record['uuid'] == str(expected)
+        assert record['uuid'] != record['electronUuid']
+        actual = subprocess.run(['dwarfdump', '--uuid', str(bundle / record['path'])],
+                                check=True, capture_output=True, text=True).stdout
+        assert str(expected).upper() in actual, actual
     return fields
 
 
@@ -92,8 +103,10 @@ passed the attached startup and local-install denial checks in CI.
 
 Updates are manual: download the newest release and replace the app. Automatic
 updating is disabled so this build cannot replace itself with the full runtime.
-The application identity remains stable across releases to preserve sign-in and
-settings. Server configuration and credentials are never baked into the download.
+The bundle ID and settings location remain stable. Ad-hoc signing can cause macOS
+to ask for permissions again after an update. Executable UUIDs are isolated from
+other Electron apps so Local Network permissions can identify this app correctly.
+Server configuration and credentials are never baked into the download.
 
 Source commit: `{stamp['commit']}`. Upstream base: `90d6b98fd86d20981ee06ddd5b7d93e4320f26a4`.
 ''')
