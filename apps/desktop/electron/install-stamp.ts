@@ -114,6 +114,13 @@ function freezeStamp(stamp: InstallStamp): Readonly<InstallStamp> {
 export const INSTALL_STAMP: Readonly<InstallStamp> | null =
   typeof __HERMES_INSTALL_STAMP__ === 'undefined' ? null : freezeStamp(__HERMES_INSTALL_STAMP__)
 
+/** Local installation and execution are unavailable in the Light artifact. */
+export function assertLocalRuntimeAllowed(stamp: Readonly<InstallStamp> | null = INSTALL_STAMP): void {
+  if (stamp?.payload === 'light') {
+    throw new Error('Hermes Light is client-only. Connect to an existing Hermes server.')
+  }
+}
+
 /**
  * The install shape this process runs as — THE single split every
  * lifecycle decision gates on (mirror of Python's runtime_tree()):

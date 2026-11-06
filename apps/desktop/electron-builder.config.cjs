@@ -105,7 +105,7 @@ module.exports = {
     // Electron bootstrap reads package.productName before main.ts. Keep the
     // shipped stable default, but isolate nonstable userData from first access.
     // A stable-branded channel has no token and keeps stable's userData.
-    ...((channelRequest && token) || appNamePascal !== artifactNamePascal ? { productName: displayName } : {}),
+    ...(light || (channelRequest && token) || appNamePascal !== artifactNamePascal ? { productName: displayName } : {}),
     desktopName: appId
   },
   directories: {

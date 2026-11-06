@@ -51,14 +51,14 @@ const buildCommit = /^[a-f0-9]{40}$/.test(buildCommitEnv) ? buildCommitEnv.slice
 if (/^commit\./.test(process.env.HERMES_PAYLOAD_TAG || '') && !buildCommit) {
   throw new Error('A commit build tag requires HERMES_BUILD_COMMIT (the commit identity)')
 }
-const displayName = buildCommit
+const displayName = light ? name.display : buildCommit
   ? `${name.display} ${buildCommit}`
   : canary
     ? `${name.display} Canary`
     : name.display
 
-const kebabSuffix = buildCommit ? `-${buildCommit}` : canary ? '-canary' : ''
-const pascalSuffix = buildCommit ? `Commit${buildCommit}` : canary ? 'Canary' : ''
+const kebabSuffix = light ? '' : buildCommit ? `-${buildCommit}` : canary ? '-canary' : ''
+const pascalSuffix = light ? '' : buildCommit ? `Commit${buildCommit}` : canary ? 'Canary' : ''
 const cliName = `${light ? 'hermes-light' : 'hermes'}${kebabSuffix}`
 // A canary builds the Store package too (the canary runs every stable lane), but only stable
 // releases ever submit one: canary publication never reaches the Store job.
@@ -73,7 +73,7 @@ const identity = {
   store,
   light,
   displayName,
-  appId: `com.nousresearch.${name.kebab}${kebabSuffix}`,
+  appId: light ? 'com.mickroplastics.hermes-light' : `com.nousresearch.${name.kebab}${kebabSuffix}`,
   // Store and commit builds do not publish a release feed.
   channel: store || buildCommit ? null : light ? (canary ? 'light-canary' : 'light') : (canary ? 'canary' : 'latest'),
   appNamePascal: `${name.pascal}${pascalSuffix}`,
