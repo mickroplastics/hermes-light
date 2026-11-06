@@ -437,7 +437,7 @@ export function DesktopInstallOverlay({ enabled = true }: DesktopInstallOverlayP
     return null
   }
 
-  if (remoteOpen) {
+  if (remoteOpen || (state.setupChoice && import.meta.env.HERMES_DESKTOP_VARIANT === 'light')) {
     return <FirstRunRemoteSetup onBack={() => setRemoteOpen(false)} />
   }
 

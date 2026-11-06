@@ -46,14 +46,14 @@ const canary = /\+canary\.20\d{6}T\d{6}Z$/.test(process.env.HERMES_PAYLOAD_TAG |
 // seven-character commit suffix also names the CLI and fits MSIX's name cap.
 const buildCommitEnv = process.env.HERMES_BUILD_COMMIT || ''
 const buildCommit = /^[a-f0-9]{40}$/.test(buildCommitEnv) ? buildCommitEnv.slice(0, 7) : null
-const displayName = buildCommit
+const displayName = light ? name.display : buildCommit
   ? `${name.display} ${buildCommit}`
   : canary
     ? `${name.display} Canary`
     : name.display
 
-const kebabSuffix = buildCommit ? `-${buildCommit}` : canary ? '-canary' : ''
-const pascalSuffix = buildCommit ? `Commit${buildCommit}` : canary ? 'Canary' : ''
+const kebabSuffix = light ? '' : buildCommit ? `-${buildCommit}` : canary ? '-canary' : ''
+const pascalSuffix = light ? '' : buildCommit ? `Commit${buildCommit}` : canary ? 'Canary' : ''
 const cliName = `${light ? 'hermes-light' : 'hermes'}${kebabSuffix}`
 if (store && (canary || buildCommit)) {
   throw new Error('Store packaging is only eligible for stable releases')
@@ -66,7 +66,7 @@ const identity = {
   store,
   light,
   displayName,
-  appId: `com.nousresearch.${name.kebab}${kebabSuffix}`,
+  appId: light ? 'com.mickroplastics.hermes-light' : `com.nousresearch.${name.kebab}${kebabSuffix}`,
   // Store and commit builds do not publish a release feed.
   channel: store || buildCommit ? null : light ? (canary ? 'light-canary' : 'light') : (canary ? 'canary' : 'latest'),
   appNamePascal: `${name.pascal}${pascalSuffix}`,
