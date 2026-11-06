@@ -78,6 +78,10 @@ export default async function afterPack(context) {
       path.resolve(import.meta.dirname, '../../../scripts/bundles/payload.py'), 'relocate', payload], { stdio: 'inherit' })
   }
   if (platform === 'darwin') {
+    if (process.env.HERMES_DESKTOP_VARIANT === 'light') {
+      runPython([path.resolve(import.meta.dirname, '../../../scripts/light/macos_identity.py'),
+        path.dirname(path.dirname(resources))], { stdio: 'inherit' })
+    }
     await restoreLegacyMacIcon(context)
     await restoreMacLocaleMarkers(context)
     if (fs.existsSync(payload)) {
