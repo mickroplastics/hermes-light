@@ -20,7 +20,9 @@ function validateNativeTree(nativeDeps, platform) {
       throw new Error(`Prepared node-pty binding does not match ${platform}: ${binding}`)
     }
   }
-  if (platform === 'darwin' && !existsSync(join(nativeDeps, 'get-windows/main'))) {
+  // Window enumeration is optional: stage-native-deps records its absence
+  // as a degraded but consumable tree. Validate the helper only when staged.
+  if (platform === 'darwin' && existsSync(join(nativeDeps, 'get-windows')) && !existsSync(join(nativeDeps, 'get-windows/main'))) {
     throw new Error('Prepared get-windows is missing its macOS helper')
   }
 }
