@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 
 root = Path(__file__).resolve().parents[2]
 release = root / 'apps/desktop/release'
@@ -12,6 +13,26 @@ apps = list(release.glob('mac*/Hermes Light.app'))
 if len(apps) != 1:
     raise SystemExit(f'Expected one Hermes Light.app, found {apps}')
 app = apps[0]
+
+
+def verified_signature(bundle: Path) -> dict[str, str]:
+    subprocess.run(['codesign', '--verify', '--deep', '--strict', str(bundle)], check=True)
+    details = subprocess.run(['codesign', '-dvvv', str(bundle)], check=True,
+                             capture_output=True, text=True).stderr
+    fields = dict(line.split('=', 1) for line in details.splitlines() if '=' in line)
+    assert fields['Identifier'] == 'com.mickroplastics.hermes-light', fields
+    assert fields['Signature'] == 'adhoc', fields
+    assert 'runtime' in fields['CodeDirectory v'], fields
+    return fields
+
+
+def artifact(suffix: str) -> Path:
+    files = list(release.glob(f'HermesLight-*-mac-arm64.{suffix}'))
+    if len(files) != 1:
+        raise SystemExit(f'Expected one {suffix}, found {files}')
+    return files[0]
+
+
 resources = app / 'Contents/Resources'
 stamp = json.loads((resources / 'install-stamp.json').read_text())
 assert stamp['payload'] == 'light', stamp
@@ -19,17 +40,34 @@ assert stamp['commit'] == os.environ['GITHUB_SHA']
 assert stamp['updateMechanism'] == 'external', stamp
 assert not stamp.get('runtime'), 'Light must not carry a Python launch contract'
 assert not (resources / 'agent-payload').exists(), 'Agent payload found'
-subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
+signature = verified_signature(app)
 out = root / 'light-release'
 out.mkdir(exist_ok=True)
 prepared = json.loads((root / '.build/desktop-job/prepared.json').read_text())
 node = prepared['node']
-subprocess.run([node, 'scripts/light/smoke.mjs', str(app), str(out)], cwd=root, check=True)
+# Verify what users receive: a seal on the build directory proves nothing about
+# archives. Each must hold the same signed code; the smoke runs the DMG's copy.
+with tempfile.TemporaryDirectory() as temp:
+    work = Path(temp)
+    subprocess.run(['ditto', '-x', '-k', str(artifact('zip')), str(work / 'zip')], check=True)
+    assert verified_signature(work / 'zip/Hermes Light.app')['CDHash'] == signature['CDHash']
+    subprocess.run(['hdiutil', 'verify', str(artifact('dmg'))], check=True)
+    mount = work / 'dmg'
+    mount.mkdir()
+    subprocess.run(['hdiutil', 'attach', '-nobrowse', '-readonly', '-mountpoint', str(mount),
+                    str(artifact('dmg'))], check=True)
+    try:
+        subprocess.run(['ditto', str(mount / 'Hermes Light.app'),
+                        str(work / 'installed/Hermes Light.app')], check=True)
+    finally:
+        subprocess.run(['hdiutil', 'detach', str(mount)], check=True)
+    installed = work / 'installed/Hermes Light.app'
+    assert verified_signature(installed)['CDHash'] == signature['CDHash']
+    subprocess.run([node, 'scripts/light/smoke.mjs', str(installed), str(out)], cwd=root, check=True)
+    # The smoke must not have changed the sealed bundle.
+    assert verified_signature(installed)['CDHash'] == signature['CDHash']
 for suffix in ('dmg', 'zip'):
-    files = list(release.glob(f'HermesLight-*-mac-arm64.{suffix}'))
-    if len(files) != 1:
-        raise SystemExit(f'Expected one {suffix}, found {files}')
-    shutil.copy2(files[0], out / f'HermesLight-macos-arm64.{suffix}')
+    shutil.copy2(artifact(suffix), out / f'HermesLight-macos-arm64.{suffix}')
 (out / 'build.json').write_text(json.dumps(stamp, indent=2) + '\n')
 (out / 'SHA256SUMS').write_text(''.join(
     f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n'
