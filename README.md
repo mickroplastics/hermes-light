@@ -1,3 +1,29 @@
+# Hermes Light — remote-only desktop client
+
+[Download the latest macOS release](https://github.com/mickroplastics/hermes-light/releases/latest)
+· [Build a release](https://github.com/mickroplastics/hermes-light/actions/workflows/light-release.yml)
+
+This is Miguel's community fork of Nous Research Hermes Desktop, for connecting
+an Apple Silicon Mac to an existing Hermes server. It is **not an official Nous
+release**. The agent stays on your server.
+
+- No bundled Python or agent runtime.
+- Local runtime discovery, installation, repair and startup are blocked in Light.
+- First launch opens the existing remote connection form.
+- Stable app identity preserves settings when replacing the app with a new release.
+- Builds are ad-hoc signed, not notarized. Updates are manual from GitHub Releases.
+
+To publish: open **Actions → Build Hermes Light for Mac → Run workflow** on the
+`light` branch. CI builds using the upstream `--variant light` driver, launches
+the packaged app, checks that local install/repair requests are denied, and then
+publishes a DMG, ZIP, checksums and the smoke-test evidence. No server credentials
+or Apple signing secrets are needed. Upstream deployment workflows are removed
+on this branch; the upstream `main` branch remains available for future merges.
+
+Current upstream base: `90d6b98fd86d20981ee06ddd5b7d93e4320f26a4`.
+
+---
+
 <p align="center">
   <img src="assets/banner.png" alt="Hermes Agent" width="100%">
 </p>

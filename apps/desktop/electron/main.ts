@@ -325,7 +325,7 @@ import { snapHudBounds } from './hud-snap'
 import { createHudSnapShortcut } from './hud-snap-shortcut'
 import { buildHudWindowUrl } from './hud-url'
 import { linuxOzoneBackend, resolveHudWindowing } from './hud-windowing'
-import { INSTALL_STAMP, installShape } from './install-stamp'
+import { INSTALL_STAMP, installShape, assertLocalRuntimeAllowed } from './install-stamp'
 import type { InstallStamp } from './install-stamp'
 import { createKeepAwakeController } from './keep-awake-controller'
 import { launchBuildIdentity } from './launch-build-identity'
@@ -4184,6 +4184,7 @@ const backendOwnership = createBackendOwnership({
 })
 
 function reapOrphanedBackendsOnce() {
+  if (isLightVariant()) return Promise.resolve()
   if (!backendOrphanReapPromise) {
     backendOrphanReapPromise = backendOwnership
       .reapOrphans()
@@ -4815,6 +4816,15 @@ function writeDefaultProjectDir(dir) {
 const installedRuntimeGate = createInstalledRuntimeGate(process.env, rememberLog)
 
 async function resolveHermesBackend(backendArgs: string[]): Promise<ResolvedHermesBackend> {
+  // Light must not discover/adopt an installed runtime, even via an override.
+  // Keep the existing remote onboarding gate, with no executable to launch.
+  if (isLightVariant()) {
+    return {
+      kind: 'bootstrap-needed', label: 'Connect to an existing Hermes server',
+      command: null, args: backendArgs, env: {}, bootstrap: true, shell: false,
+      local: 'none', platform: process.platform
+    }
+  }
   const payload = bundledPayload(process.resourcesPath)
 
   if (payload) {
@@ -5025,6 +5035,7 @@ async function ensureRuntime(
   backend: ResolvedHermesBackend,
   assertStillOwned: () => void
 ): Promise<ResolvedHermesBackend> {
+  assertLocalRuntimeAllowed()
   localBackendLifecycle.assertCanStart()
   assertStillOwned()
 
@@ -14367,6 +14378,7 @@ ipcMain.handle('hermes:bootstrap:reset', async () => {
   return { ok: true }
 })
 ipcMain.handle('hermes:bootstrap:repair', async (): Promise<{ ok: boolean; bundled?: boolean; error?: string }> => {
+  assertLocalRuntimeAllowed()
   // A bundled install's payload is immutable and sealed at build time —
   // "repair" would re-run the installer against a separate
   // %LOCALAPPDATA%\hermes tree the app doesn't own. The only repair for a
@@ -14441,6 +14453,7 @@ registerUpdateHoldIpc(ipcMain, {
 })
 
 ipcMain.handle('hermes:bootstrap:continue-local', async () => {
+  assertLocalRuntimeAllowed()
   rememberLog('[bootstrap] local install selected by renderer; continuing first-launch bootstrap')
   continueFirstRunLocalBootstrap()
 

@@ -136,6 +136,9 @@ const emojibaseAssets = () => ({
 })
 
 export default defineConfig(({ command }) => ({
+  define: {
+    'import.meta.env.HERMES_DESKTOP_VARIANT': JSON.stringify(process.env.HERMES_DESKTOP_VARIANT || '')
+  },
   base: './',
   plugins: [react(), cachedCompilerPass(command), tailwindcss(), emojibaseAssets()],
   css: {
