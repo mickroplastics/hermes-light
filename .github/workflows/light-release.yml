@@ -27,6 +27,7 @@ jobs:
       - name: Build the pinned Light artifact
         run: |
           test "$(uname -m)" = arm64
+          python3 scripts/light/test_macos_identity.py
           python3 scripts/bundles/desktop.py --commit "$GITHUB_SHA" --variant light
       - name: Verify the packaged client
         run: python3 scripts/light/verify.py

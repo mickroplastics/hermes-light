@@ -90,6 +90,12 @@ async function packPlatform(context, payload) {
       path.resolve(import.meta.dirname, '../../../scripts/bundles/payload.py'), 'relocate', payload], { stdio: 'inherit' })
   }
   if (platform === 'darwin') {
+    if (process.env.HERMES_DESKTOP_VARIANT === 'light') {
+      // payload is <App>.app/Contents/Resources/agent-payload; the identity tool takes the .app.
+      const app = path.dirname(path.dirname(path.dirname(payload)))
+      runPython([path.resolve(import.meta.dirname, '../../../scripts/light/macos_identity.py'), app],
+        { stdio: 'inherit' })
+    }
     await restoreLegacyMacIcon(context)
     await restoreMacLocaleMarkers(context)
     if (fs.existsSync(payload)) {
