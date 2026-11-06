@@ -180,21 +180,7 @@ module.exports = {
       NSAppleEventsUsageDescription: `${displayName} uses Apple Events to automate apps you explicitly ask it to control.`
     },
     target: ['dmg', 'zip'],
-    sign: createMacSigner({
-      entitlements: path.join(__dirname, 'electron/entitlements.mac.plist'),
-      entitlementsInherit: path.join(__dirname, 'electron/entitlements.mac.inherit.plist'),
-      hardenedRuntime: true,
-      ignore: (/** @type {string} */ file) => {
-        try {
-          if (fs.lstatSync(file).isDirectory()) {
-            return false
-          }
-          return !isMachO(file)
-        } catch {
-          return true
-        }
-      }
-    })
+    sign: macSigning()
   },
   dmg: {
     // Avoid the failing optional APFS shrink pass; keep compressed conversion.
@@ -335,6 +321,32 @@ function isMachO(file) {
     fs.closeSync(fd)
   }
   return MACHO_MAGICS.has(buf.readUInt32BE(0))
+}
+
+function macSigning() {
+  const policy = {
+    entitlements: path.join(__dirname, 'electron/entitlements.mac.plist'),
+    entitlementsInherit: path.join(__dirname, 'electron/entitlements.mac.inherit.plist'),
+    hardenedRuntime: true,
+    ignore: (/** @type {string} */ file) => {
+      try {
+        if (fs.lstatSync(file).isDirectory()) {
+          return false
+        }
+        return !isMachO(file)
+      } catch {
+        return true
+      }
+    }
+  }
+  // A custom signer function gives the builder no identity qualifier, so with
+  // no certificate it skips signing and leaves Electron's stale seal on the
+  // modified bundle. A certificate-less Light build has no payload for that
+  // signer to manage: declare ad-hoc so the app is sealed before archiving.
+  if (light && !process.env.CSC_LINK && !process.env.CSC_NAME) {
+    return { ...policy, identity: '-' }
+  }
+  return createMacSigner(policy)
 }
 
 function windowsSigning() {
