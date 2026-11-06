@@ -123,5 +123,9 @@ allowBuilds:
   node-pty@1.1.0: true
   electron-winstaller@5.4.0: true
   fsevents@2.3.3: true
-  get-windows@9.3.0: true
+  # The macOS universal Swift helper is already in the locked tarball.
+  # Its unconditional node-pre-gyp installer targets Windows bindings and
+  # fails on the macOS build host, causing pnpm to drop the optional package.
+  # stage-native-deps explicitly prepares Windows bindings when needed.
+  get-windows@9.3.0: false
   lefthook@2.2.1: true
