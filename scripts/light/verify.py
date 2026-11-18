@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -83,6 +84,9 @@ for suffix in ('dmg', 'zip'):
 (out / 'SHA256SUMS').write_text(''.join(
     f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n'
     for p in sorted(out.glob('HermesLight-*'))))
+upstream_base = re.search(r'^Current upstream base: `([0-9a-f]{40})`\.$',
+                          (root / 'README.md').read_text(), re.MULTILINE)
+assert upstream_base, 'README.md must record the current upstream base'
 (out / 'INSTALL.md').write_text(f'''# Hermes Light for Apple Silicon Macs
 
 Community build from the Nous Research Hermes Desktop source, maintained in
@@ -108,5 +112,5 @@ to ask for permissions again after an update. Executable UUIDs are isolated from
 other Electron apps so Local Network permissions can identify this app correctly.
 Server configuration and credentials are never baked into the download.
 
-Source commit: `{stamp['commit']}`. Upstream base: `90d6b98fd86d20981ee06ddd5b7d93e4320f26a4`.
+Source commit: `{stamp['commit']}`. Upstream base: `{upstream_base[1]}`.
 ''')
